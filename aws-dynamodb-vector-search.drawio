@@ -1,0 +1,69 @@
+<mxfile host="app.diagrams.net" modified="2026-09-19T10:25:00.000Z" agent="Mozilla/5.0" version="24.7.17" type="device">
+  <diagram id="aws-vector-search-hla" name="AWS Vector Search HLA">
+    <mxGraphModel dx="1422" dy="794" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1600" pageHeight="1000" math="0" shadow="0">
+      <root>
+        <mxCell id="0"/>
+        <mxCell id="1" parent="0"/>
+
+        <mxCell id="aws-boundary" value="AWS Cloud" style="rounded=1;whiteSpace=wrap;html=1;strokeWidth=2;strokeColor=#232F3E;fillColor=#F7F8FA;fontStyle=1;fontSize=18;verticalAlign=top;spacingTop=12;" vertex="1" parent="1">
+          <mxGeometry x="420" y="80" width="1040" height="700" as="geometry"/>
+        </mxCell>
+        <mxCell id="app-boundary" value="Application compute boundary" style="rounded=1;whiteSpace=wrap;html=1;strokeWidth=2;dashed=1;strokeColor=#2E7D32;fillColor=#E8F5E9;fontStyle=1;fontSize=16;verticalAlign=top;spacingTop=12;" vertex="1" parent="1">
+          <mxGeometry x="470" y="150" width="430" height="540" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="dataset" value="Hugging Face&#xa;arXiv JSONL.GZ" style="shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.general;html=1;whiteSpace=wrap;fillColor=#E3F2FD;strokeColor=#1976D2;fontSize=14;" vertex="1" parent="1">
+          <mxGeometry x="80" y="350" width="150" height="120" as="geometry"/>
+        </mxCell>
+        <mxCell id="query" value="Search client&#xa;or query text" style="shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.general;html=1;whiteSpace=wrap;fillColor=#E3F2FD;strokeColor=#1976D2;fontSize=14;" vertex="1" parent="1">
+          <mxGeometry x="80" y="570" width="150" height="120" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="spring" value="Spring Boot application&#xa;DatabaseInitializerRunner" style="shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.ec2;html=1;whiteSpace=wrap;fillColor=#E8F5E9;strokeColor=#2E7D32;fontSize=14;" vertex="1" parent="1">
+          <mxGeometry x="560" y="250" width="250" height="120" as="geometry"/>
+        </mxCell>
+        <mxCell id="ingestion" value="Dataset ingestion&#xa;GzipHttpDatasetStreamer" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#2E7D32;fontSize=13;" vertex="1" parent="1">
+          <mxGeometry x="520" y="430" width="165" height="80" as="geometry"/>
+        </mxCell>
+        <mxCell id="similarity" value="Cosine similarity&#xa;in application memory" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#2E7D32;fontSize=13;" vertex="1" parent="1">
+          <mxGeometry x="685" y="430" width="165" height="80" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="bedrock" value="Amazon Bedrock&#xa;Titan Embed Text v2" style="shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.bedrock;html=1;whiteSpace=wrap;fillColor=#FFF3E0;strokeColor=#FF9900;fontSize=14;" vertex="1" parent="1">
+          <mxGeometry x="1030" y="250" width="220" height="120" as="geometry"/>
+        </mxCell>
+        <mxCell id="dynamodb" value="Amazon DynamoDB&#xa;ArxivPaperVectorStore" style="shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.dynamodb;html=1;whiteSpace=wrap;fillColor=#FFF3E0;strokeColor=#FF9900;fontSize=14;" vertex="1" parent="1">
+          <mxGeometry x="1030" y="500" width="220" height="120" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="e1" value="HTTPS download" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;strokeWidth=2;strokeColor=#1976D2;fontSize=12;" edge="1" parent="1" source="dataset" target="ingestion">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e2" value="parsed papers" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;strokeWidth=2;strokeColor=#2E7D32;fontSize=12;" edge="1" parent="1" source="ingestion" target="spring">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e3" value="title + abstract" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;strokeWidth=2;strokeColor=#FF9900;fontSize=12;" edge="1" parent="1" source="spring" target="bedrock">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e4" value="1024-dimensional embedding" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;strokeWidth=2;strokeColor=#FF9900;fontSize=12;" edge="1" parent="1" source="bedrock" target="dynamodb">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e5" value="paper metadata" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;strokeWidth=2;strokeColor=#FF9900;fontSize=12;" edge="1" parent="1" source="spring" target="dynamodb">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e6" value="query text" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;strokeWidth=2;strokeColor=#1976D2;fontSize=12;" edge="1" parent="1" source="query" target="spring">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e7" value="query vector" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;strokeWidth=2;strokeColor=#FF9900;fontSize=12;" edge="1" parent="1" source="bedrock" target="similarity">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e8" value="DynamoDB Scan: stored vectors" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;strokeWidth=2;strokeColor=#FF9900;fontSize=12;" edge="1" parent="1" source="dynamodb" target="similarity">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e9" value="top K results" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;strokeWidth=2;strokeColor=#2E7D32;fontSize=12;" edge="1" parent="1" source="similarity" target="spring">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>
