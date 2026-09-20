@@ -8,6 +8,35 @@ For a class-by-class explanation with code snippets, see [`DEEP-DIVE.md`](DEEP-D
 
 The high-level architecture is also available as an editable Excalidraw design: [`aws-dynamodb-vector-search.excalidraw`](aws-dynamodb-vector-search.excalidraw).
 
+## Project structure
+
+```text
+src/main/java/com/bsmlabs/vector_search/
+├── config/
+│   ├── AppProperties.java
+│   └── AwsConfig.java
+├── infrastructure/
+│   └── DynamoDbTableManager.java
+├── controller/
+│   └── SearchController.java
+├── runner/
+│   └── DatabaseInitializerRunner.java
+├── service/
+│   ├── EmbeddingService.java
+│   ├── EmbeddingServiceImpl.java
+│   ├── GzipHttpDatasetStreamer.java
+│   └── PaperVectorService.java
+└── domain/
+    └── ArxivPaper.java
+
+src/main/resources/
+├── application.properties
+└── templates/
+    └── search.html
+```
+
+The application starts with `DatabaseInitializerRunner`, which creates the DynamoDB table, downloads and ingests the configured dataset, generates embeddings with Amazon Bedrock, and stores the paper records. After initialization, `SearchController` serves the Thymeleaf web UI and delegates searches to `PaperVectorService`.
+
 ## Architecture
 
 ```text
@@ -361,32 +390,6 @@ The query follows the same process, except that `inputText` is the search query.
 ```text
 cosine_similarity(A, B) =
     dot(A, B) / (sqrt(dot(A, A)) * sqrt(dot(B, B)))
-```
-
-## Project structure
-
-```text
-src/main/java/com/bsmlabs/vector_search/
-├── config/
-│   ├── AppProperties.java
-│   └── AwsConfig.java
-├── infrastructure/
-│   └── DynamoDbTableManager.java
-├── controller/
-│   └── SearchController.java
-├── runner/
-│   └── DatabaseInitializerRunner.java
-├── service/
-│   ├── EmbeddingService.java
-│   ├── EmbeddingServiceImpl.java
-│   ├── GzipHttpDatasetStreamer.java
-│   └── PaperVectorService.java
-└── domain/
-    └── ArxivPaper.java
-
-src/main/resources/
-└── templates/
-    └── search.html
 ```
 
 ## Troubleshooting
