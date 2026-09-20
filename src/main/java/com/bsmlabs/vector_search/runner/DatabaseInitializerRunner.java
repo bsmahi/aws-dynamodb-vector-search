@@ -11,6 +11,8 @@ import java.util.List;
 
 import static java.lang.System.out;
 
+// Run this initializer once to create and populate the DynamoDB table, then leave it disabled
+// to avoid repeating table initialization, dataset ingestion, and vector indexing on startup.
 //@Component
 public class DatabaseInitializerRunner implements CommandLineRunner {
 

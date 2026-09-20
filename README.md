@@ -35,7 +35,7 @@ src/main/resources/
     └── search.html
 ```
 
-The application starts with `DatabaseInitializerRunner`, which creates the DynamoDB table, downloads and ingests the configured dataset, generates embeddings with Amazon Bedrock, and stores the paper records. After initialization, `SearchController` serves the Thymeleaf web UI and delegates searches to `PaperVectorService`.
+`DatabaseInitializerRunner` is a one-time data initialization runner. Enable its `@Component` annotation to create the DynamoDB table, download and ingest the configured dataset, generate embeddings with Amazon Bedrock, and store the paper records. After the initial run completes, keep `@Component` commented out so the application does not repeat table initialization, ingestion, or vector indexing at every startup. `SearchController` serves the Thymeleaf web UI and delegates searches to `PaperVectorService`.
 
 ## Architecture
 
@@ -256,7 +256,7 @@ The current code creates AWS SDK clients directly with the SDK default credentia
 
 ## Processing flow
 
-1. `DynamoDbTableManager` creates `ArxivPaperVectorStore` if it does not already exist.
+1. When enabled for the one-time initialization run, `DynamoDbTableManager` creates `ArxivPaperVectorStore` if it does not already exist.
 2. `GzipHttpDatasetStreamer` downloads the compressed arXiv dataset and reads up to the configured sample size. Its `HttpClient` and nested response-processing streams are closed automatically after the download completes.
 3. For every paper, the title and abstract are cleaned and concatenated:
 
@@ -264,7 +264,7 @@ The current code creates AWS SDK clients directly with the SDK default credentia
    clean(title) + "." + clean(abstract)
    ```
 
-4. `EmbeddingServiceImpl` sends that text to Amazon Bedrock using the configured Titan embedding model.
+4. During initialization, `EmbeddingServiceImpl` sends that text to Amazon Bedrock using the configured Titan embedding model.
 5. The returned vector is stored as the DynamoDB `embedding` list attribute together with the paper metadata.
 6. A query submitted through the Thymeleaf web UI is embedded with the same Bedrock model.
 7. The application scans DynamoDB, calculates cosine similarity between the query vector and each stored vector, sorts by similarity, and renders the top K papers in the web UI.
@@ -329,11 +329,12 @@ app.aws.dataset.sample-size=1000
    mvnw.cmd spring-boot:run
    ```
 
-4. Follow the console output for:
+4. For the first run only, temporarily uncomment `@Component` in `DatabaseInitializerRunner.java`, then follow the console output for:
    - DynamoDB table creation and activation
    - dataset download
    - embedding and indexing progress
 5. Wait until the table is active and dataset ingestion, embedding generation, and indexing are complete.
+6. Stop the application, comment `@Component` again, and restart the application. Subsequent starts use the existing DynamoDB data without recreating or re-indexing it.
 
 The application creates the DynamoDB table with on-demand billing (`PAY_PER_REQUEST`). Stop the application with `Ctrl+C` after the workflow completes.
 
