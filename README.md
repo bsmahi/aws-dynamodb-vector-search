@@ -35,7 +35,10 @@ src/main/resources/
     └── search.html
 ```
 
-`DatabaseInitializerRunner` is a one-time data initialization runner. Enable its `@Component` annotation to create the DynamoDB table, download and ingest the configured dataset, generate embeddings with Amazon Bedrock, and store the paper records. After the initial run completes, keep `@Component` commented out so the application does not repeat table initialization, ingestion, or vector indexing at every startup. `SearchController` serves the Thymeleaf web UI and delegates searches to `PaperVectorService`.
+- `DatabaseInitializerRunner` is a one-time data initialization runner.
+-  Enable its `@Component` annotation to create the DynamoDB table, download and ingest the configured dataset, generate embeddings with Amazon Bedrock, and store the paper records.
+-  After the initial run completes, keep `@Component` commented out so the application does not repeat table initialization, ingestion, or vector indexing at every startup.
+-  `SearchController` serves the Thymeleaf web UI and delegates searches to `PaperVectorService`.
 
 ## Architecture
 
