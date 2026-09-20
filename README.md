@@ -334,7 +334,10 @@ app.aws.dataset.sample-size=1000
    - dataset download
    - embedding and indexing progress
 5. Wait until the table is active and dataset ingestion, embedding generation, and indexing are complete.
-6. Stop the application, comment `@Component` again, and restart the application. Subsequent starts use the existing DynamoDB data without recreating or re-indexing it.
+
+> [!NOTE]
+
+- Stop the application, comment `@Component` again, and restart the application. Subsequent starts use the existing DynamoDB data without recreating or re-indexing it.
 
 The application creates the DynamoDB table with on-demand billing (`PAY_PER_REQUEST`). Stop the application with `Ctrl+C` after the workflow completes.
 
