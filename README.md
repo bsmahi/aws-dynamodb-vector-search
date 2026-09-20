@@ -18,6 +18,16 @@ http://localhost:8080/
 
 Enter a natural-language query and choose between 1 and 20 results. The page invokes the existing Bedrock-backed vector search, ranks papers by cosine similarity, and displays each paper's title, score, authors, abstract, and arXiv link. The hard-coded startup search has been removed; searches are now initiated from the UI.
 
+The UI is implemented with Spring MVC and Thymeleaf:
+
+- `GET /` renders `src/main/resources/templates/search.html`.
+- `POST /search` submits the search form and renders the results in the same template.
+- Blank queries display a validation message.
+- Requested result counts are constrained to the range 1–20.
+- Search results include the result count, latency, similarity score, paper metadata, and abstract.
+
+The Maven build includes `spring-boot-starter-thymeleaf` for the application and `spring-boot-starter-thymeleaf-test` for template-related testing support.
+
 ## Architecture
 
 ```text
@@ -247,8 +257,8 @@ The current code creates AWS SDK clients directly with the SDK default credentia
 
 4. `EmbeddingServiceImpl` sends that text to Amazon Bedrock using the configured Titan embedding model.
 5. The returned vector is stored as the DynamoDB `embedding` list attribute together with the paper metadata.
-6. The sample query `quantum physics and qubit states` is embedded with the same Bedrock model.
-7. The application scans DynamoDB, calculates cosine similarity between the query vector and each stored vector, sorts by similarity, and prints the top two papers.
+6. A query submitted through the Thymeleaf web UI is embedded with the same Bedrock model.
+7. The application scans DynamoDB, calculates cosine similarity between the query vector and each stored vector, sorts by similarity, and renders the top K papers in the web UI.
 
 ## Prerequisites
 
@@ -314,7 +324,7 @@ app.aws.dataset.sample-size=1000
    - DynamoDB table creation and activation
    - dataset download
    - embedding and indexing progress
-   - similarity-search results
+5. Open `http://localhost:8080/` in a browser and submit a search query.
 
 The application creates the DynamoDB table with on-demand billing (`PAY_PER_REQUEST`). Stop the application with `Ctrl+C` after the workflow completes.
 
@@ -360,6 +370,8 @@ src/main/java/com/bsmlabs/vector_search/
 │   └── AwsConfig.java
 ├── infrastructure/
 │   └── DynamoDbTableManager.java
+├── controller/
+│   └── SearchController.java
 ├── runner/
 │   └── DatabaseInitializerRunner.java
 ├── service/
@@ -369,6 +381,10 @@ src/main/java/com/bsmlabs/vector_search/
 │   └── PaperVectorService.java
 └── domain/
     └── ArxivPaper.java
+
+src/main/resources/
+└── templates/
+    └── search.html
 ```
 
 ## Troubleshooting
