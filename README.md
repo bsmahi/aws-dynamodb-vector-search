@@ -8,26 +8,6 @@ For a class-by-class explanation with code snippets, see [`DEEP-DIVE.md`](DEEP-D
 
 The high-level architecture is also available as an editable Excalidraw design: [`aws-dynamodb-vector-search.excalidraw`](aws-dynamodb-vector-search.excalidraw).
 
-## Web UI
-
-After the application finishes its startup table and ingestion workflow, open:
-
-```text
-http://localhost:8080/
-```
-
-Enter a natural-language query and choose between 1 and 20 results. The page invokes the existing Bedrock-backed vector search, ranks papers by cosine similarity, and displays each paper's title, score, authors, abstract, and arXiv link. The hard-coded startup search has been removed; searches are now initiated from the UI.
-
-The UI is implemented with Spring MVC and Thymeleaf:
-
-- `GET /` renders `src/main/resources/templates/search.html`.
-- `POST /search` submits the search form and renders the results in the same template.
-- Blank queries display a validation message.
-- Requested result counts are constrained to the range 1–20.
-- Search results include the result count, latency, similarity score, paper metadata, and abstract.
-
-The Maven build includes `spring-boot-starter-thymeleaf` for the application and `spring-boot-starter-thymeleaf-test` for template-related testing support.
-
 ## Architecture
 
 ```text
@@ -324,9 +304,31 @@ app.aws.dataset.sample-size=1000
    - DynamoDB table creation and activation
    - dataset download
    - embedding and indexing progress
-5. Open `http://localhost:8080/` in a browser and submit a search query.
+5. Wait until the table is active and dataset ingestion, embedding generation, and indexing are complete.
 
 The application creates the DynamoDB table with on-demand billing (`PAY_PER_REQUEST`). Stop the application with `Ctrl+C` after the workflow completes.
+
+## Web UI testing
+
+Run the web UI only after the application has completed AWS resource initialization, dataset ingestion, embedding generation, and indexing.
+
+Open the Thymeleaf application:
+
+```text
+http://localhost:8080/
+```
+
+Enter a natural-language query and choose between 1 and 20 results. The page invokes the existing Bedrock-backed vector search, ranks papers by cosine similarity, and displays each paper's title, score, authors, abstract, and arXiv link.
+
+The UI is implemented with Spring MVC and Thymeleaf:
+
+- `GET /` renders `src/main/resources/templates/search.html`.
+- `POST /search` submits the search form and renders the results in the same template.
+- Blank queries display a validation message.
+- Requested result counts are constrained to the range 1–20.
+- Search results include the result count, latency, similarity score, paper metadata, and abstract.
+
+The Maven build includes `spring-boot-starter-thymeleaf` for the application and `spring-boot-starter-thymeleaf-test` for template-related testing support.
 
 ## DynamoDB item shape
 
