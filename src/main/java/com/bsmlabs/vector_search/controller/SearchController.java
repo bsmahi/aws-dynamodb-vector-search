@@ -10,6 +10,7 @@ import software.amazon.awssdk.services.dynamodb.model.AttributeValue;
 
 import java.util.List;
 import java.util.Map;
+import java.util.stream.IntStream;
 
 @Controller
 public class SearchController {
@@ -27,7 +28,7 @@ public class SearchController {
         return "search";
     }
 
-    @PostMapping("/search")
+    @PostMapping("/")
     public String search(@RequestParam String query,
                          @RequestParam(defaultValue = "5") int topK,
                          Model model) {
@@ -49,8 +50,8 @@ public class SearchController {
             double elapsedSeconds =
                     (System.nanoTime() - startTime) / 1_000_000_000.0;
 
-            List<SearchResultView> results = searchResults.stream()
-                    .map(this::toView)
+            List<SearchResultView> results = IntStream.range(0, searchResults.size())
+                    .mapToObj(index -> toView(searchResults.get(index), index + 1))
                     .toList();
 
             model.addAttribute("results", results);
@@ -62,15 +63,26 @@ public class SearchController {
         return "search";
     }
 
-    private SearchResultView toView(PaperVectorService.SearchResult result) {
+    private SearchResultView toView(PaperVectorService.SearchResult result, int citationNumber) {
         Map<String, AttributeValue> item = result.item();
         String paperId = stringAttribute(item, "paper_id", "");
+        String title = stringAttribute(item, "title", "Untitled");
+        String authors = stringAttribute(item, "authors", "Unknown Authors");
         return new SearchResultView(
-                stringAttribute(item, "title", "Untitled"),
-                stringAttribute(item, "authors", "Unknown Authors"),
+                title,
+                authors,
                 stringAttribute(item, "abstract", "No abstract available."),
                 paperId,
+                formatCitation(citationNumber, authors, title, paperId),
                 result.score());
+    }
+
+    private String formatCitation(int citationNumber,
+                                  String authors,
+                                  String title,
+                                  String paperId) {
+        String citation = "[" + citationNumber + "] " + authors + ". " + title + ".";
+        return paperId.isBlank() ? citation : citation + " arXiv:" + paperId + ".";
     }
 
     private String stringAttribute(Map<String, AttributeValue> item,
@@ -86,6 +98,7 @@ public class SearchController {
                                    String authors,
                                    String abstractText,
                                    String paperId,
+                                   String citation,
                                    double score) {
     }
 }

@@ -73,7 +73,7 @@ src/main/resources/
 
 The architecture diagram uses AWS service logos loaded from Simple Icons:
 
-<p align="center">
+<p text-align="center">
   <img src="https://raw.githubusercontent.com/awslabs/aws-icons-for-plantuml/main/dist/Database/DynamoDB.png" alt="AWS architecture icons" width="64">
   &nbsp;&nbsp;&nbsp;&nbsp;
   <img src="https://raw.githubusercontent.com/awslabs/aws-icons-for-plantuml/main/dist/ArtificialIntelligence/Bedrock.png" alt="Amazon Bedrock" width="64">
@@ -81,27 +81,27 @@ The architecture diagram uses AWS service logos loaded from Simple Icons:
   <img src="https://raw.githubusercontent.com/awslabs/aws-icons-for-plantuml/main/dist/Database/DynamoDBTable.png" alt="DynamoDB table" width="64">
 </p>
 
-<table align="center">
+<table text-align="center">
   <tr>
-    <td align="center">
+    <td text-align="center">
       <img src="https://cdn.simpleicons.org/huggingface/FFD21E" alt="Hugging Face" width="56"><br>
       <b>Hugging Face</b><br>
       arXiv dataset
     </td>
-    <td align="center">➜</td>
-    <td align="center">
+    <td text-align="center">➜</td>
+    <td text-align="center">
       <img src="https://cdn.simpleicons.org/spring/6DB33F" alt="Spring Boot" width="56"><br>
       <b>Spring Boot</b><br>
       ingestion and search
     </td>
-    <td align="center">➜</td>
-    <td align="center">
+    <td text-align="center">➜</td>
+    <td text-align="center">
       <img src="https://raw.githubusercontent.com/awslabs/aws-icons-for-plantuml/main/dist/ArtificialIntelligence/Bedrock.png" alt="Amazon Bedrock" width="56"><br>
       <b>Amazon Bedrock</b><br>
       Titan embeddings
     </td>
-    <td align="center">➜</td>
-    <td align="center">
+    <td text-align="center">➜</td>
+    <td text-align="center">
       <img src="https://raw.githubusercontent.com/awslabs/aws-icons-for-plantuml/main/dist/Database/DynamoDB.png" alt="Amazon DynamoDB" width="56"><br>
       <b>Amazon DynamoDB</b><br>
       papers and vectors
@@ -110,7 +110,7 @@ The architecture diagram uses AWS service logos loaded from Simple Icons:
   <tr>
     <td></td>
     <td></td>
-    <td align="center" colspan="3">↕ query embedding and stored-vector scan</td>
+    <td text-align="center" colspan="3">↕ query embedding and stored-vector scan</td>
     <td></td>
     <td></td>
   </tr>
@@ -142,7 +142,7 @@ flowchart LR
 
 The following high-level design represents the current application boundary. The Spring Boot application is the orchestration layer and can run locally or on an AWS compute service such as Amazon EC2. Amazon Bedrock and Amazon DynamoDB are managed AWS services.
 
-<p align="center">
+<p text-align="center">
   <img src="https://raw.githubusercontent.com/awslabs/aws-icons-for-plantuml/main/dist/General/Internet.png" alt="Internet" width="72">
   &nbsp;&nbsp;&nbsp;&nbsp;➜&nbsp;&nbsp;&nbsp;&nbsp;
   <img src="https://raw.githubusercontent.com/awslabs/aws-icons-for-plantuml/main/dist/Compute/EC2.png" alt="Amazon EC2" width="72">
@@ -152,7 +152,7 @@ The following high-level design represents the current application boundary. The
   <img src="https://raw.githubusercontent.com/awslabs/aws-icons-for-plantuml/main/dist/Database/DynamoDB.png" alt="Amazon DynamoDB" width="72">
 </p>
 
-<p align="center">
+<p text-align="center">
   <b>External dataset and user query</b>
   &nbsp;&nbsp;&nbsp;→&nbsp;&nbsp;&nbsp;
   <b>Spring Boot vector-search application</b>
@@ -363,6 +363,7 @@ The UI is implemented with Spring MVC and Thymeleaf:
 - Blank queries display a validation message.
 - Requested result counts are constrained to the range 1–20.
 - Search results include the result count, latency, similarity score, paper metadata, and abstract.
+- Each result also includes a numbered citation containing the authors, title, and arXiv identifier, alongside the direct arXiv link.
 
 The Maven build includes `spring-boot-starter-thymeleaf` for the application and `spring-boot-starter-thymeleaf-test` for template-related testing support.
 
@@ -380,7 +381,36 @@ Each paper is stored with the following attributes:
 
 The configured Titan model returns a 1024-dimensional vector. The vector is stored as DynamoDB numeric list values rather than as a native DynamoDB vector type.
 
+### Citations and metadata
+
+Each vector record retains the source metadata needed to cite the paper in search results or downstream RAG workflows:
+
+- `paper_id`: The canonical arXiv ID.
+- `title`: Paper title.
+- `authors`: Author list.
+- `abstract`: Full-text abstract.
+
+Because this metadata is stored alongside the embedding, the application can return direct attribution to the source paper with each similarity result.
+
 ## Embedding and similarity details
+
+### Document chunking
+
+The application calls the raw Amazon Bedrock embedding API directly through the AWS SDK. Unlike Amazon Bedrock Knowledge Bases, this path does not provide automatic managed document chunking.
+
+Pre-chunking is not required for the current dataset because arXiv abstracts are typically 150–300 words, and the complete title plus abstract fits within Amazon Titan Embed Text V2's 8,192-token context window. Embedding the complete text preserves the relationship between the paper's title and abstract without truncation.
+
+If the application is extended to process full-text PDFs or other long-form manuscripts, add a preprocessing step before embedding, such as recursive character chunking or a token-based sliding window.
+
+### Embedding model consistency
+
+Paper metadata and natural-language search queries are embedded with the exact same Amazon Bedrock model configuration:
+
+- Model: `amazon.titan-embed-text-v2:0`
+- Dimensions: `1024`
+- Normalization: enabled
+
+Using the same model and dimension setting for ingestion and queries ensures that all vectors occupy the same vector space and can be compared reliably with cosine similarity.
 
 The embedding request contains:
 
