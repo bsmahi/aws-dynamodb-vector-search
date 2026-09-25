@@ -2,7 +2,7 @@
 
 A Spring Boot application that downloads arXiv papers, generates text embeddings with Amazon Bedrock Titan, stores the papers and vectors in Amazon DynamoDB, and performs an in-memory cosine-similarity search.
 
-> **Current implementation:** the application runs the complete workflow from a `CommandLineRunner` when it starts. It does not expose a REST search endpoint yet.
+> **Current implementation:** the application runs ingestion from an optional `CommandLineRunner` and provides vector search through the Thymeleaf web UI. The current search implementation scans DynamoDB and ranks results in application memory.
 
 For a class-by-class explanation with code snippets, see [`DEEP-DIVE.md`](DEEP-DIVE.md).
 
@@ -39,6 +39,106 @@ src/main/resources/
 -  Enable its `@Component` annotation to create the DynamoDB table, download and ingest the configured dataset, generate embeddings with Amazon Bedrock, and store the paper records.
 -  After the initial run completes, keep `@Component` commented out so the application does not repeat table initialization, ingestion, or vector indexing at every startup.
 -  `SearchController` serves the Thymeleaf web UI and delegates searches to `PaperVectorService`.
+
+## End-to-end data flow
+
+The application has two related flows: an **ingestion flow** that builds the vector store
+and a **search flow** that embeds a user query and ranks the stored papers.
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant App as Spring Boot application
+    participant Source as Hugging Face arXiv JSONL.GZ
+    participant Bedrock as Amazon Bedrock<br/>Titan Embed Text V2
+    participant DDB as Amazon DynamoDB<br/>ArxivPaperVectorStore
+    participant User as User / browser
+
+    Note over App,DDB: One-time ingestion and indexing
+    App->>DDB: Create table if absent
+    App->>DDB: Wait until table is ACTIVE
+    App->>Source: HTTPS download configured dataset URL
+    Source-->>App: Gzip-compressed JSON Lines
+    loop Up to dataset.sample-size papers
+        App->>App: Parse id, title, abstract, authors
+        App->>App: Clean and combine title + abstract
+        App->>Bedrock: Invoke embedding model with inputText
+        Bedrock-->>App: Normalized 1024-dimensional vector
+        App->>DDB: Put metadata and embedding by paper_id
+    end
+
+    Note over User,DDB: Search request
+    User->>App: Submit query and top K
+    App->>App: Clean query text
+    App->>Bedrock: Invoke same model and dimensions
+    Bedrock-->>App: Query embedding
+    App->>DDB: Scan stored paper vectors
+    DDB-->>App: Paper metadata and embeddings
+    App->>App: Calculate cosine similarity
+    App->>App: Sort descending and select top K
+    App-->>User: Render ranked papers and citations
+```
+
+### 1. Configuration enters the application
+
+`AppProperties` binds the `app.aws` namespace from
+`src/main/resources/application.properties`:
+
+| Configuration | Used by | Purpose |
+| --- | --- | --- |
+| `app.aws.dynamo-db.table-name` | `DynamoDbTableManager`, `PaperVectorService` | DynamoDB table used for paper records and vectors |
+| `app.aws.dynamo-db.index-name` | Future vector-index implementation | Reserved name for a managed/index-backed search path; not used by the current scan |
+| `app.aws.bedrock-properties.model-id` | `EmbeddingServiceImpl` | Bedrock embedding model identifier |
+| `app.aws.bedrock-properties.dimensions` | `EmbeddingServiceImpl` | Number of values returned in each embedding |
+| `app.aws.bedrock-properties.distance-function` | Future vector-index implementation | Configured similarity distance; current code calculates cosine similarity |
+| `app.aws.bedrock-properties.max-embed-chars` | `EmbeddingServiceImpl` | Maximum input characters sent to Bedrock |
+| `app.aws.dataset.url` | `GzipHttpDatasetStreamer` | HTTPS source of the gzip-compressed JSONL dataset |
+| `app.aws.dataset.sample-size` | `GzipHttpDatasetStreamer` | Maximum number of records read during ingestion |
+
+`AwsConfig` creates the AWS SDK clients. `DynamoDbClient.create()` and
+`BedrockRuntimeClient.create()` use the AWS SDK default credential and Region provider
+chains, so credentials and Region can come from `aws login`, environment variables,
+an AWS profile, or an attached IAM role.
+
+### 2. Ingestion and indexing flow
+
+1. Spring Boot starts `DatabaseInitializerRunner` when its component is enabled.
+2. `DynamoDbTableManager.createTableIfNotExists()` creates
+   `ArxivPaperVectorStore` with `paper_id` as the string partition key and
+   `PAY_PER_REQUEST` billing.
+3. `waitUntilActive()` waits until DynamoDB reports the table as `ACTIVE`.
+4. `GzipHttpDatasetStreamer` follows redirects to the configured Hugging Face URL,
+   validates the HTTP response, decompresses the gzip stream, and reads JSONL records
+   until `sample-size` is reached.
+5. Each record becomes an immutable `ArxivPaper` containing `id`, `title`,
+   `abstractText`, and `authors`.
+6. `PaperVectorService.storePaper()` cleans the title and abstract, joins them as
+   `cleanTitle + "." + cleanAbstract`, and calls `EmbeddingServiceImpl`.
+7. `EmbeddingServiceImpl` invokes Amazon Bedrock Titan Embed Text V2 with the
+   configured model ID and dimensions and requests normalized embeddings.
+8. `PaperVectorService` stores the metadata and vector in one DynamoDB item keyed by
+   `paper_id`.
+
+The stored vector is a DynamoDB list of numeric values. It is not a native DynamoDB
+vector index in the current implementation.
+
+### 3. Query and ranking flow
+
+1. A user opens `GET /` and submits the search form with a query and a result count
+   between 1 and 20.
+2. `SearchController` trims the query and validates that it is not blank.
+3. `PaperVectorService.searchInMemory()` embeds the query with the same Bedrock model,
+   dimensions, and normalization settings used during ingestion.
+4. The service scans the DynamoDB table and reads each stored embedding.
+5. Cosine similarity is calculated between the query vector and every paper vector.
+6. Results are sorted from highest to lowest similarity and limited to `topK`.
+7. Thymeleaf renders the paper title, authors, abstract, score, arXiv identifier,
+   direct source link, and citation text.
+
+Because the current ranking path scans DynamoDB and calculates similarity in the
+application, it is appropriate for a small demonstration dataset. A production
+implementation should replace the full scan with a managed vector index or another
+purpose-built approximate nearest-neighbor search service.
 
 ## Architecture
 
