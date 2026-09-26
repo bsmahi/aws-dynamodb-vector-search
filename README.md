@@ -91,7 +91,8 @@ sequenceDiagram
 | `app.aws.bedrock-properties.model-id` | `EmbeddingServiceImpl` | Bedrock embedding model identifier |
 | `app.aws.bedrock-properties.dimensions` | `EmbeddingServiceImpl` | Number of values returned in each embedding |
 | `app.aws.bedrock-properties.distance-function` | Future vector-index implementation | Configured similarity distance; current code calculates cosine similarity |
-| `app.aws.bedrock-properties.max-embed-chars` | `EmbeddingServiceImpl` | Maximum input characters sent to Bedrock |
+| `app.aws.bedrock-properties.max-embed-chars` | `EmbeddingServiceImpl`, `PaperVectorService` | Maximum input characters sent to Bedrock and part of the embedding version |
+| `app.aws.bedrock-properties.normalize` | `EmbeddingServiceImpl`, `PaperVectorService` | Whether Bedrock normalizes vectors |
 | `app.aws.dataset.url` | `GzipHttpDatasetStreamer` | HTTPS source of the gzip-compressed JSONL dataset |
 | `app.aws.dataset.sample-size` | `GzipHttpDatasetStreamer` | Maximum number of records read during ingestion |
 
@@ -402,12 +403,13 @@ app.aws.bedrock-properties.model-id=amazon.titan-embed-text-v2:0
 app.aws.bedrock-properties.dimensions=1024
 app.aws.bedrock-properties.distance-function=COSINE
 app.aws.bedrock-properties.max-embed-chars=20000
+app.aws.bedrock-properties.normalize=true
 
 app.aws.dataset.url=https://huggingface.co/datasets/gfissore/arxiv-abstracts-2021/resolve/main/arxiv-abstracts.jsonl.gz
 app.aws.dataset.sample-size=1000
 ```
 
-`index-name` and `distance-function` are configuration values for the planned vector-index implementation. The current search path uses a DynamoDB `Scan` followed by in-memory cosine similarity.
+`index-name` and `distance-function` are configuration values retained for the DynamoDB vector-search exploration. The current search path uses a paginated DynamoDB `Scan` followed by in-memory cosine similarity.
 
 ## Run locally
 
@@ -531,6 +533,11 @@ cosine_similarity(A, B) =
     dot(A, B) / (sqrt(dot(A, A)) * sqrt(dot(B, B)))
 ```
 
+Each newly indexed item also records the model ID, dimensions, normalization setting,
+and an embedding configuration version. Search validates these values when present and
+skips incompatible vectors. Existing items created before this metadata was added should
+be re-indexed for a fully verifiable comparison.
+
 ## Troubleshooting
 
 ### `AccessDeniedException` from Bedrock
@@ -560,8 +567,8 @@ Confirm that the configured URL is reachable and that it still returns a gzip-co
 
 - Every paper and every query invokes Amazon Bedrock, which incurs model-invocation charges.
 - DynamoDB uses on-demand billing for the created table.
-- The current implementation scans the complete table and computes similarity in application memory. This is suitable for a small demonstration dataset, but it is not an efficient production vector-search strategy.
-- For production workloads, consider a managed vector index, pagination, batching, retries, observability, and an API layer.
+- The current implementation still scans the complete table and computes similarity in application memory. Pagination ensures all items are considered, while a bounded top-K heap avoids retaining and sorting every scored item.
+- This remains O(n) vector comparisons and is suitable for demonstrating DynamoDB-backed vector storage, not for large-scale nearest-neighbor search.
 
 ## Validation
 

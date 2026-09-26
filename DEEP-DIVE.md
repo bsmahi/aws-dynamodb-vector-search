@@ -679,6 +679,7 @@ app.aws.bedrock-properties.model-id=amazon.titan-embed-text-v2:0
 app.aws.bedrock-properties.dimensions=1024
 app.aws.bedrock-properties.distance-function=COSINE
 app.aws.bedrock-properties.max-embed-chars=20000
+app.aws.bedrock-properties.normalize=true
 app.aws.dataset.url=https://huggingface.co/datasets/gfissore/arxiv-abstracts-2021/resolve/main/arxiv-abstracts.jsonl.gz
 app.aws.dataset.sample-size=1000
 ```
@@ -691,6 +692,7 @@ app.aws.dataset.sample-size=1000
 | `app.aws.bedrock-properties.dimensions` | `EmbeddingServiceImpl` | Requested vector dimensions |
 | `app.aws.bedrock-properties.distance-function` | Configuration only currently | Planned distance metric |
 | `app.aws.bedrock-properties.max-embed-chars` | `EmbeddingServiceImpl` | Maximum input characters |
+| `app.aws.bedrock-properties.normalize` | `EmbeddingServiceImpl`, `PaperVectorService` | Whether Bedrock normalizes vectors |
 | `app.aws.dataset.url` | `GzipHttpDatasetStreamer` | Dataset download URL |
 | `app.aws.dataset.sample-size` | `GzipHttpDatasetStreamer` | Maximum records to load |
 
@@ -698,12 +700,13 @@ app.aws.dataset.sample-size=1000
 
 The project is a focused demonstration. Important production improvements would include:
 
-- Use paginated DynamoDB reads instead of a single `Scan`.
+- Use paginated DynamoDB reads instead of a single `Scan`. The implementation now
+  scans all pages and maintains only the best K results in memory.
 - Use a vector-capable index or managed vector search service for large datasets.
 - Add retries and backoff for Bedrock throttling and transient AWS errors.
 - Batch or queue ingestion to control model-invocation rate.
 - Move the sample query into an API endpoint.
-- Validate Bedrock response shape before iterating over `root.get("embedding")`.
+- Validate the Bedrock response vector dimension before storing or searching it.
 - Add configuration validation for required values and positive dimensions.
 - Avoid long-running ingestion directly inside application startup.
 - Add structured logging, metrics, tracing, and cost monitoring.

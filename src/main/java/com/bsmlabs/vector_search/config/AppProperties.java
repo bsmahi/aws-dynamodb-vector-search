@@ -10,7 +10,11 @@ public record AppProperties(DynamoDbProperties dynamoDb,
 
     public record DynamoDbProperties(String tableName, String indexName) {}
 
-    public record BedrockProperties(String modelId, Long dimensions, String distanceFunction, int maxEmbedChars) {}
+    public record BedrockProperties(String modelId,
+                                    Long dimensions,
+                                    String distanceFunction,
+                                    int maxEmbedChars,
+                                    boolean normalize) {}
 
     public record DatasetProperties(String url, Long sampleSize) {}
 }
